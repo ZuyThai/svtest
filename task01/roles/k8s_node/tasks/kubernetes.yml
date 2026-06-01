@@ -1,0 +1,76 @@
+---
+- name: Ensure apt keyring directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download Kubernetes apt signing key
+  ansible.builtin.get_url:
+    url: "{{ kubernetes_apt_key_url }}"
+    dest: /tmp/kubernetes-release.key
+    owner: root
+    group: root
+    mode: "0644"
+  register: kubernetes_key_download
+
+- name: Check Kubernetes apt signing key
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  register: kubernetes_apt_key
+
+- name: Install Kubernetes apt signing key
+  ansible.builtin.command:
+    cmd: gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/kubernetes-release.key
+  when: kubernetes_key_download.changed or not kubernetes_apt_key.stat.exists
+  changed_when: true
+
+- name: Ensure Kubernetes apt signing key is readable
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure Kubernetes apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] {{ kubernetes_apt_repo_url }} /"
+    filename: kubernetes
+    state: present
+    update_cache: true
+
+- name: Build Kubernetes package list
+  ansible.builtin.set_fact:
+    kubernetes_package_install_list: >-
+      {{
+        kubernetes_packages
+        if kubernetes_package_version | length == 0
+        else kubernetes_packages | map('regex_replace', '$', '=' ~ kubernetes_package_version) | list
+      }}
+
+- name: Install Kubernetes node packages
+  ansible.builtin.apt:
+    name: "{{ kubernetes_package_install_list }}"
+    state: present
+
+- name: Hold Kubernetes packages
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop: "{{ kubernetes_packages }}"
+
+- name: Configure kubelet defaults for containerd
+  ansible.builtin.template:
+    src: kubelet-defaults.j2
+    dest: /etc/default/kubelet
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable kubelet service
+  ansible.builtin.systemd_service:
+    name: kubelet
+    enabled: true
+    daemon_reload: true

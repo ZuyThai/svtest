@@ -1,0 +1,23 @@
+---
+- name: Refresh apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install production node packages
+  ansible.builtin.apt:
+    name: "{{ k8s_node_base_packages }}"
+    state: present
+
+- name: Ensure chrony is enabled and running
+  ansible.builtin.systemd_service:
+    name: chrony
+    enabled: true
+    state: started
+
+- name: Enable unattended security upgrades package
+  ansible.builtin.systemd_service:
+    name: unattended-upgrades
+    enabled: true
+    state: started
+

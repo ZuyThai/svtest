@@ -1,0 +1,37 @@
+version = 2
+root = "{{ containerd_root_dir }}"
+state = "{{ containerd_state_dir }}"
+oom_score = {{ containerd_oom_score }}
+disabled_plugins = []
+
+[grpc]
+  max_recv_message_size = {{ containerd_grpc_max_recv_message_size }}
+  max_send_message_size = {{ containerd_grpc_max_send_message_size }}
+
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    sandbox_image = "{{ containerd_pause_image }}"
+    max_container_log_line_size = {{ containerd_max_container_log_line_size }}
+    enable_selinux = false
+    disable_apparmor = false
+    restrict_oom_score_adj = false
+    tolerate_missing_hugetlb_controller = true
+    disable_hugetlb_controller = true
+
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      snapshotter = "{{ containerd_snapshotter }}"
+      default_runtime_name = "{{ containerd_default_runtime }}"
+      discard_unpacked_layers = {{ containerd_discard_unpacked_layers | bool | lower }}
+
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+        runtime_type = "io.containerd.runc.v2"
+
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+          BinaryName = "/usr/bin/runc"
+          SystemdCgroup = true
+
+    [plugins."io.containerd.grpc.v1.cri".cni]
+      bin_dir = "/opt/cni/bin"
+      conf_dir = "/etc/cni/net.d"
+      max_conf_num = 1
+

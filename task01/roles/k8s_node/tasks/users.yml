@@ -1,0 +1,80 @@
+---
+- name: Assert at least one sysadmin account is configured
+  ansible.builtin.assert:
+    that:
+      - sysadmin_users | length > 0
+    fail_msg: "Define at least one entry in sysadmin_users."
+
+- name: Ensure local generated password directory exists
+  ansible.builtin.file:
+    path: "{{ sysadmin_password_store_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  no_log: true
+
+- name: Initialize sysadmin password map
+  ansible.builtin.set_fact:
+    sysadmin_cleartext_passwords: {}
+  no_log: true
+
+- name: Register provided sysadmin passwords
+  ansible.builtin.set_fact:
+    sysadmin_cleartext_passwords: "{{ sysadmin_cleartext_passwords | combine({item.name: item.password}) }}"
+  loop: "{{ sysadmin_users }}"
+  when: item.password is defined
+  no_log: true
+
+- name: Generate missing sysadmin passwords on the Ansible controller
+  ansible.builtin.set_fact:
+    sysadmin_cleartext_passwords: "{{ sysadmin_cleartext_passwords | combine({item.name: lookup('ansible.builtin.password', sysadmin_password_store_dir ~ '/' ~ item.name ~ ' length=' ~ sysadmin_generated_password_length ~ ' chars=ascii_letters,digits')}) }}"
+  loop: "{{ sysadmin_users }}"
+  when: item.password is not defined
+  no_log: true
+
+- name: Ensure sysadmin accounts exist
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    comment: "{{ item.comment | default(item.name) }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    groups: "{{ (item.groups | default(['sudo'])) | join(',') }}"
+    append: true
+    create_home: true
+    password: "{{ sysadmin_cleartext_passwords[item.name] | password_hash('sha512') }}"
+    update_password: on_create
+    state: present
+  loop: "{{ sysadmin_users }}"
+  register: sysadmin_user_create_results
+  no_log: true
+
+- name: Expire generated passwords on first login for newly-created users
+  ansible.builtin.command: "chage -d 0 {{ item.item.name }}"
+  loop: "{{ sysadmin_user_create_results.results }}"
+  when:
+    - sysadmin_force_password_change | bool
+    - item.changed | bool
+  changed_when: true
+  no_log: true
+
+- name: Install sysadmin SSH authorized keys
+  ansible.posix.authorized_key:
+    user: "{{ item.0.name }}"
+    key: "{{ item.1 }}"
+    state: present
+  loop: "{{ sysadmin_users | subelements('ssh_keys', skip_missing=True) }}"
+  no_log: true
+
+- name: Configure explicit sudo policy for sysadmin accounts
+  ansible.builtin.template:
+    src: sysadmins-sudoers.j2
+    dest: /etc/sudoers.d/90-k8s-sysadmins
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Report generated password location on controller
+  ansible.builtin.debug:
+    msg: "Generated sysadmin passwords for {{ inventory_hostname }} are stored on the Ansible controller at {{ sysadmin_password_store_dir }}."
+

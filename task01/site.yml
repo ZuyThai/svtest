@@ -1,0 +1,9 @@
+---
+- name: Provision production-ready Kubernetes worker node
+  hosts: k8s_nodes
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: k8s_node
+

@@ -1,0 +1,36 @@
+---
+- name: Configure node hostname
+  ansible.builtin.hostname:
+    name: "{{ k8s_node_hostname }}"
+  when: k8s_node_manage_hostname | bool
+
+- name: Maintain hosts entry for node hostname
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBLE MANAGED K8S NODE HOSTNAME"
+    block: |
+      127.0.1.1 {{ k8s_node_hostname }}
+      {% if k8s_node_primary_ip | length > 0 %}
+      {{ k8s_node_primary_ip }} {{ k8s_node_hostname }}
+      {% endif %}
+  when: k8s_node_manage_hostname | bool
+
+- name: Ensure systemd-resolved drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: k8s_node_manage_dns | bool
+
+- name: Configure DNS through systemd-resolved
+  ansible.builtin.template:
+    src: resolved-k8s-node.conf.j2
+    dest: /etc/systemd/resolved.conf.d/99-k8s-node.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: k8s_node_manage_dns | bool
+  notify: Restart systemd-resolved
+

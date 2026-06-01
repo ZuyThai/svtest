@@ -1,0 +1,28 @@
+---
+- name: Validate supported operating system
+  ansible.builtin.import_tasks: assert.yml
+
+- name: Install base operating system packages
+  ansible.builtin.import_tasks: base.yml
+
+- name: Configure hostname and DNS
+  ansible.builtin.import_tasks: identity.yml
+
+- name: Configure sysadmin accounts
+  ansible.builtin.import_tasks: users.yml
+
+- name: Configure Kubernetes kernel prerequisites
+  ansible.builtin.import_tasks: kernel.yml
+
+- name: Install and configure containerd
+  ansible.builtin.import_tasks: containerd.yml
+
+- name: Install Kubernetes node packages
+  ansible.builtin.import_tasks: kubernetes.yml
+
+- name: Configure command audit logging
+  ansible.builtin.import_tasks: audit.yml
+
+- name: Install and run validation script
+  ansible.builtin.import_tasks: validation.yml
+

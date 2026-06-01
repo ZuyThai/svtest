@@ -1,0 +1,31 @@
+---
+- name: Install containerd runtime
+  ansible.builtin.apt:
+    name: "{{ containerd_package_name }}"
+    state: present
+    update_cache: true
+
+- name: Ensure containerd configuration directory exists
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure containerd for Kubernetes
+  ansible.builtin.template:
+    src: containerd-config.toml.j2
+    dest: "{{ containerd_config_path }}"
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Restart containerd
+
+- name: Ensure containerd service is enabled and running
+  ansible.builtin.systemd_service:
+    name: "{{ containerd_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+

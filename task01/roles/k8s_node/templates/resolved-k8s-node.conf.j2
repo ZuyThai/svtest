@@ -1,0 +1,9 @@
+[Resolve]
+DNS={{ k8s_node_dns_servers | join(' ') }}
+FallbackDNS={{ k8s_node_fallback_dns_servers | join(' ') }}
+{% if k8s_node_dns_search_domains | length > 0 %}
+Domains={{ k8s_node_dns_search_domains | join(' ') }}
+{% endif %}
+DNSSEC=no
+Cache=yes
+

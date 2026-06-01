@@ -1,0 +1,4 @@
+{% for key, value in k8s_sysctl_settings | dictsort %}
+{{ key }} = {{ value }}
+{% endfor %}
+

@@ -1,0 +1,5 @@
+Defaults:{{ sysadmin_users | map(attribute='name') | join(',') }} env_reset,timestamp_timeout=5
+{% for user in sysadmin_users %}
+{{ user.name }} ALL=(ALL:ALL) {% if sysadmin_sudo_nopasswd | bool %}NOPASSWD: {% endif %}ALL
+{% endfor %}
+

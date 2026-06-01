@@ -1,0 +1,21 @@
+---
+- name: Apply pending service and configuration handlers before validation
+  ansible.builtin.meta: flush_handlers
+
+- name: Install validation script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/scripts/validate-node-prereqs.sh"
+    dest: /usr/local/sbin/validate-k8s-node-prereqs
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Run validation script
+  ansible.builtin.command: /usr/local/sbin/validate-k8s-node-prereqs
+  environment:
+    EXPECTED_PAUSE_IMAGE: "{{ containerd_pause_image }}"
+    EXPECTED_AUDIT_LOG_FILE: "{{ audit_command_log_file }}"
+    EXPECTED_CRI_SOCKET: "{{ k8s_node_cri_socket }}"
+    SYSCTL_FILE: "{{ k8s_sysctl_file }}"
+  changed_when: false
+  when: k8s_node_run_validation | bool

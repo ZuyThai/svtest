@@ -1,0 +1,9 @@
+## Capture every executed command for human login sessions.
+## auid is the original authenticated user ID, so sudo commands retain attribution.
+-a always,exit -F arch=b64 -S execve -S execveat -F auid>=1000 -F auid!=4294967295 -k user-commands
+-a always,exit -F arch=b32 -S execve -S execveat -F auid>=1000 -F auid!=4294967295 -k user-commands
+
+## Capture direct root sessions separately while using the same dedicated log.
+-a always,exit -F arch=b64 -S execve -S execveat -F auid=0 -k root-commands
+-a always,exit -F arch=b32 -S execve -S execveat -F auid=0 -k root-commands
+

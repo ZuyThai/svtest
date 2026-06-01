@@ -1,0 +1,15 @@
+---
+- name: Validate Kubernetes node prerequisites
+  hosts: k8s_nodes
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Run node prerequisite validation
+      ansible.builtin.command: /usr/local/sbin/validate-k8s-node-prereqs
+      environment:
+        EXPECTED_PAUSE_IMAGE: "{{ containerd_pause_image | default('registry.k8s.io/pause:3.10') }}"
+        EXPECTED_AUDIT_LOG_FILE: "{{ audit_command_log_file | default('/var/log/k8s-user-commands/audit.log') }}"
+        EXPECTED_CRI_SOCKET: "{{ k8s_node_cri_socket | default('unix:///run/containerd/containerd.sock') }}"
+        SYSCTL_FILE: "{{ k8s_sysctl_file | default('/etc/sysctl.d/99-kubernetes-cri.conf') }}"
+      changed_when: false

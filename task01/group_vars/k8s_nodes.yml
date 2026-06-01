@@ -1,0 +1,36 @@
+---
+# Kubernetes packages are installed from pkgs.k8s.io. Match this minor version
+# to the existing control plane before running kubeadm join.
+kubernetes_minor_version: "1.36"
+
+# Keep empty to install the newest patch available in the minor repository.
+# Example pin: kubernetes_package_version: "1.36.1-1.1"
+kubernetes_package_version: ""
+
+# The node will be ready for a command such as:
+# kubeadm join ... --cri-socket unix:///run/containerd/containerd.sock
+k8s_node_cri_socket: "unix:///run/containerd/containerd.sock"
+
+k8s_node_dns_servers:
+  - "1.1.1.1"
+  - "8.8.8.8"
+k8s_node_fallback_dns_servers:
+  - "9.9.9.9"
+  - "8.8.4.4"
+k8s_node_dns_search_domains: []
+
+sysadmin_users:
+  - name: opsadmin
+    comment: "Operations administrator"
+    groups:
+      - sudo
+    shell: /bin/bash
+    ssh_keys: []
+
+# Generated passwords are written on the Ansible controller and ignored by git.
+sysadmin_password_store_dir: "{{ playbook_dir }}/generated_passwords/{{ inventory_hostname }}"
+sysadmin_force_password_change: true
+sysadmin_sudo_nopasswd: false
+
+containerd_pause_image: "registry.k8s.io/pause:3.10"
+
